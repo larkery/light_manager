@@ -1,4 +1,4 @@
-from .interceptor import setup_service_call_interceptor
+from interceptor import setup_service_call_interceptor
 
 call_count = 0
 
