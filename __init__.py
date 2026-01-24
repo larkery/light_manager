@@ -197,7 +197,7 @@ def reconcile(current_states, target_states):
     for (entity, tgt) in sorted(target_states.items(),
                                 key = lambda x : -len(g2l.get(x[0], []))):
         for entity in g2l.get(entity, [entity]):
-            if current_states[entity] != tgt:
+            if current_states.get(entity, None) != tgt:
                 actions[entity] = tgt
                 action_entity[entity] = entity
             elif entity in actions:
@@ -215,7 +215,7 @@ def reconcile(current_states, target_states):
         relevant_groups = list(sorted(relevant_groups, key= lambda g:len(g2l[g])))
         for g in relevant_groups:
             ls = g2l.get(g, set())
-            states = set([target_states.get(l, current_states.get(l)) for l in ls])
+            states = set([target_states.get(l, current_states.get(l, None)) for l in ls])
             if len(states) == 1: # can use group
                 # is it better to use it or not?
                 # this is how many distinct actions we already have for these lights
@@ -314,6 +314,7 @@ async def intercept(call, data):
 
         current_state = {}
         target_state = {}
+        # argh we need to fill in all lights as well here?
         for e in entities:
             s = hass.states.get(e)
             if s:
