@@ -1,9 +1,37 @@
+## TODO
+## implement interceptor functions to lock + latch
+## add service call to lock / latch
+## add service call to unlock / unlatch
+## ZIGTIMISE
+## Merge in on/off stuff?
+## Add transitions? Split commands in interceptor?
+
 from .interceptor import setup_service_call_interceptor
 
 import homeassistant.util.dt as dt_util
 from homeassistant.helpers.sun import get_astral_location
 from homeassistant.components.light import (
-    ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN
+    ATTR_BRIGHTNESS,
+    ATTR_BRIGHTNESS_PCT,
+    ATTR_BRIGHTNESS_STEP,
+    ATTR_BRIGHTNESS_STEP_PCT,
+    ATTR_COLOR_NAME,
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_RGB_COLOR,
+    ATTR_TRANSITION,
+    ATTR_XY_COLOR,
+    ATTR_COLOR_MODE,
+    ATTR_FLASH,
+    ATTR_EFFECT,
+    ATTR_HS_COLOR,
+    ATTR_RGBW_COLOR,
+    ATTR_RGBWW_COLOR,
+    ATTR_WHITE,
+    ColorMode,
+)
+
+from homeassistant.const import (
+    ATTR_ENTITY_ID, SERVICE_TURN_ON, SERVICE_TOGGLE, STATE_ON, STATE_OFF
 )
 
 from collections import defaultdict
@@ -16,6 +44,26 @@ lightsets = {}
 
 # light entity -> stuff
 managed_lights = {}
+
+@service("light.lock")
+def lock(lights = [],
+         brightness = None,
+         temperature = None):
+    global managed_lights
+    lights = zha_expand(lights)
+    for light in lights:
+        managed_lights[light]["lock"] = (brightness, temperature)
+        managed_lights[light]["latch"] = False
+    update()
+
+@service("light.unlock")
+def unlock(lights = []):
+    global managed_lights
+    lights = zha_expand(lights)
+    for light in lights:
+        managed_lights[light]["lock"] = None
+        managed_lights[light]["latch"] = False
+    update()
 
 @service("light.manage")
 def manage(lightset=None,
@@ -64,6 +112,8 @@ fields:
                        temperature_min, temperature_max)
     }
 
+    update()
+
 def unmanage(lights=[], lightset=None):
     global lightsets, managed_lights
     lights = zha_expand(lights)
@@ -84,15 +134,23 @@ def update(now = None):
     set_states = {name:(curve(times, parameters["brightness"]),
                         curve(times, parameters["temperature"]))
                   for (name, parameters) in lightsets.items()}
+
+    for name in set_states:
+        lightsets[name]["state"] = set_states[name]
     
     current_states = {}
     for id in state.names(domain = 'light'):
         val = state.get(id)
         if val == 'unavailable': continue
         att = state.getattr(id)
+        if val == 'off' and managed_lights.get(id, {}).get("latch", True):
+            ## toggle latch for a locked state
+            managed_lights[id]["lock"] = None
+            managed_lights[id]["latch"] = False
+        
         current_states[id] = (att.get(ATTR_BRIGHTNESS, None),
                               att.get(ATTR_COLOR_TEMP_KELVIN, None))
-
+        
     # brightness and temperature should either be whatever
     # is in lock, or whatever the lightset says, or OFF
     # if the light is off. Next we want to reconcile these
@@ -100,7 +158,10 @@ def update(now = None):
     target_states = {name:(managed_lights[name]["lock"] or
                            set_states[managed_lights[name]["lightset"]])
                      for name in managed_lights
-                     if current_states[name][0]}
+                     if (current_states[name][0] ## is on
+                         and (managed_lights[name]["lock"] or # is locked
+                              not(managed_lights[name]["latch"]))) # is not latched to whatever values
+                     }
 
     actions = reconcile(current_states, target_states)
 
@@ -110,16 +171,16 @@ def update(now = None):
         # can I use context here??
         if brightness:
             hass.services.async_call(
-                "light", "turn_on",
-                {"entity_id": entity,
+                "light", TURN_ON,
+                {ATTR_ENTITY_ID: entity,
                  ATTR_BRIGHTNESS: brightness,
                  ATTR_COLOR_TEMP_KELVIN: temperature},
                 context=context
             )
         else:
             hass.services.async_call(
-                "light", "turn_off",
-                {"entity_id":entity},
+                "light", TURN_OFF,
+                {ATTR_ENTITY_ID:entity},
                 context=context
             )
 
@@ -239,21 +300,114 @@ async def intercept(call, data):
     global context
     # skip our own calls
     if call.context == context: return
-    if call.service == 'turn_on':
-        intercept_on(data)
-    elif call.service == 'turn_off':
-        intercept_off(data)
-    elif call.service == 'toggle':
-        # toggle is annoying
-        pass
+    if call.service == TURN_ON:
+        await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID)))
+    elif call.service == TURN_OFF:
+        latch_off(zha_expand(data.get(ATTR_ENTITY_ID)))
+    elif call.service == TOGGLE:
+        entities = data.get(ATTR_ENTITY_ID)
+        offs,ons = [],[]
 
+        current_state = {}
+        target_state = {}
+        for e in entities:
+            s = hass.states.get(e)
+            if s:
+                if s.state == STATE_ON:
+                    current_state[e] = True
+                    target_state[e] = False
+                elif s.state == STATE_OFF:
+                    current_state[e] = False
+                    target_state[e] = True
+        
+        actions = reconcile(current_state, target_state)
+        for (e, a) in actions.items():
+            if a: ons.append(e)
+            else: offs.append(e)
+        data[ATTR_ENTITY_ID] = offs
+        latch_off(offs)
+        if len(ons):
+            # we will maybe intercept this again and insert any needed
+            # brightness parameters? not really sure this will work
+            # properly anyway
+            await self.hass.services.async_call(
+                LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ons}
+            )
+        
 @pyscript_compile
-def intercept_on(data):
-    pass
-
+async def intercept_on(data, entities):
+    global lighsets, managed_lights, context
+    expanded_entities = zha_expand(entities)
+    # does it affect our entities?
+    for entity in expanded_entities:
+        if entity in managed_lights: break
+    else:
+        return
+    params = data["params"]
+    latches =  ATTR_BRIGHTNESS in params \
+        or ATTR_BRIGHTNESS_PCT in params \
+        or ATTR_BRIGHTNESS_STEP_PCT in params \
+        or ATTR_BRIGHTNESS_PCT in params \
+        or ATTR_COLOR_TEMP_KELVIN in params \
+        or ATTR_RGB_COLOR in params \
+        or ATTR_HS_COLOR in params \
+        or ATTR_RGBW_COLOR in params \
+        or ATTR_RGBWW_COLOR in params \
+        or ATTR_XY_COLOR in params \
+        or ATTR_WHITE in params \
+        or ATTR_COLOR_NAME in params
+    if latches:
+        for entity in expanded_entities:
+            if entity in managed_lights:
+                managed_lights[entity]["latch"] = True
+                managed_lights[entity]["lock"] = None
+    else:
+        target_state = {}
+        current_state = {}
+        for entity in expanded_entities:
+            st = managed_lights.get(entity, {"latch":False, "lock":None, "lightset":None})
+            ls = lightsets.get(st["lightset"], {"state":True}).get("state")
+            if st["latch"]:
+                target_state[entity] = True
+            elif st["lock"]:
+                target_state[entity] = st["lock"]
+            else:
+                target_state[entity] = ls
+            cur_st = hass.states.get(entity)
+            if cur_st and cur_st.state == STATE_ON:
+                if target_state[entity] == True:
+                    current_state[entity] = True
+                else:
+                    current_state[entity] = (cur_st.attributes.get(ATTR_BRIGHTNESS),
+                                             cur_st.attributes.get(ATTR_COLOR_TEMP_KELVIN))
+            else:
+                current_state[entity] = False
+        actions = reconcile(current_state, target_state)
+        actions = actions.items()
+        if actions:
+            (entity, action) = actions[0]
+            data[ATTR_ENTITY_ID] = [entity]
+            if type(action) is tuple:
+                params[ATTR_BRIGHTNESS] = action[0]
+                params[ATTR_COLOR_TEMP_KELVIN] = action[1]
+            for (entity, action) in actions[1:]:
+                call_data = {ATTR_ENTITY_ID: [entity]}
+                if type(action) is tuple:
+                    call_data["params"] = {
+                        ATTR_BRIGHTNESS: action[0]
+                        ATTR_COLOR_TEMP_KELVIN: action[1]
+                    }
+                await self.hass.services.async_call(
+                    LIGHT_DOMAIN, SERVICE_TURN_ON, call_data, context = context
+                )
+    
 @pyscript_compile
-def intercept_off(data):
-    pass
+def latch_off(entities):
+    global managed_lights
+    for e in entities:
+        if managed_lights.get(e, {}).get("latch", False):
+            managed_lights[e]["latch"] = False
+            managed_lights[e]["lock"] = None
 
 interceptors = []
 
@@ -261,9 +415,9 @@ interceptors = []
 def init():
     global interceptors
     interceptors.extend([
-        setup_service_call_interceptor( hass, 'light', 'turn_on', intercept ),
-        setup_service_call_interceptor( hass, 'light', 'turn_off', intercept ),
-        setup_service_call_interceptor( hass, 'light', 'toggle', intercept )
+        setup_service_call_interceptor( hass, 'light', TURN_ON, intercept ),
+        setup_service_call_interceptor( hass, 'light', TURN_OFF, intercept ),
+        setup_service_call_interceptor( hass, 'light', TOGGLE, intercept )
     ])
 
 @time_trigger('shutdown')
