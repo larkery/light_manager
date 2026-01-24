@@ -59,6 +59,7 @@ fields:
             "lightset": lightset, 
             "lock": None, # or (brightness, temperature)
         }
+        log.warning(f"managing {light}")
 
     lightsets[lightset] = {
         "brightness":(brightness_k, brightness_x,
