@@ -554,7 +554,7 @@ async def intercept_on(data, expanded_entities):
                 
 @pyscript_compile
 def turn_on(data, delay = 0):
-    hass.async_create_task(turn_on(data, delay = delay))    
+    hass.async_create_task(_turn_on(data, delay = delay))    
 
 @pyscript_compile
 async def _turn_on(data, delay = 0):
