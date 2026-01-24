@@ -286,28 +286,13 @@ def update(now = None, force = False, transition = 0):
     for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
         if brightness:
-            if transition:
-                hass.services.async_call(
-                    "light", SERVICE_TURN_ON,
-                    {ATTR_ENTITY_ID: entity,
-                     ATTR_BRIGHTNESS: brightness,
-                     ATTR_TRANSITION: transition},
-                    context=context
-                )
-                task.sleep(transition+0.5) # ikea
-                hass.services.async_call(
-                    "light", SERVICE_TURN_ON,
-                    {ATTR_ENTITY_ID: entity, ATTR_COLOR_TEMP_KELVIN: temperature},
-                    context=context
-                )
-            else:
-                hass.services.async_call(
-                    "light", SERVICE_TURN_ON,
-                    {ATTR_ENTITY_ID: entity,
-                     ATTR_BRIGHTNESS: brightness,
-                     ATTR_COLOR_TEMP_KELVIN: temperature},
-                    context=context
-                )
+            hass.async_create_task(
+                turn_on({
+                    ATTR_ENTITY_ID: entity,
+                    ATTR_BRIGHTNESS: brightness,
+                    ATTR_TRANSITION: transition
+                } )
+            )
         else:
             hass.services.async_call(
                 "light", SERVICE_TURN_OFF,
