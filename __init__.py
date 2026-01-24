@@ -501,9 +501,12 @@ async def intercept_on(data, expanded_entities):
             temp = params[ATTR_COLOR_TEMP_KELVIN]
             del params[ATTR_COLOR_TEMP_KELVIN]
             # later we want to do the next thing
-            task.create(turn_on_later,
-                        {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
-                        params[ATTR_TRANSITION]+0.1)
+            hass.async_create_task(
+                turn_on(
+                    {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
+                    params[ATTR_TRANSITION]+0.1
+                )
+            )
     else:
         # early abort
         for entity in expanded_entities:
@@ -547,9 +550,12 @@ async def intercept_on(data, expanded_entities):
                 temp = params[ATTR_COLOR_TEMP_KELVIN]
                 del params[ATTR_COLOR_TEMP_KELVIN]
                 # later we want to do the next thing
-                task.create(turn_on_later,
-                            {ATTR_ENTITY_ID: [entity], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
-                            params[ATTR_TRANSITION]+0.1)
+                hass.async_create_task(
+                    turn_on(
+                        {ATTR_ENTITY_ID: [entity], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
+                        params[ATTR_TRANSITION]+0.1
+                    )
+                )
                 
             # extra actions:
             for (entity, action) in actions[1:]:
