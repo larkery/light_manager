@@ -107,14 +107,16 @@ fields:
           mode: slider
     temperature_min:
        selector:
-         color_temp:
-           unit: kelvin
+         number:
            min: 2200
+           max: 5000
+           mode: slider
     temperature_max:
        selector:
-         color_temp:
-           unit: kelvin
+         number:
            min: 2200
+           max: 5000
+           mode: slider
     brightness_k:
        selector:
          number:
