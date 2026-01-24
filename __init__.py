@@ -55,7 +55,7 @@ def unmanage(lights=[], lightset=None):
                            if v["lightset"] == lightset]:
         del managed_lights[light]
 
-def update:
+def update():
     global lightsets, managed_lights
 
     times = get_times(hass)
