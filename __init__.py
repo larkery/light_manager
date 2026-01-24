@@ -61,12 +61,14 @@ fields:
           multiple: true
     brightness:
        required: true
+       default: 1
        selector:
          number:
            min: 1
            max: 255
     temperature:
        required: true
+       default: 2200
        selector:
          number:
            min: 2200
@@ -129,39 +131,55 @@ fields:
             domain: light
           multiple: true
     brightness_min:
+      required: true
+      default: 200
       selector:
         number:
           min: 0
           max: 255
           mode: slider
     brightness_max:
+      required: true
+      default: 255
       selector:
         number:
           min: 0
           max: 255
           mode: slider
     temperature_min:
+       required: true
+       default: 2500
        selector:
          number:
            min: 2200
            max: 5000
            mode: slider
     temperature_max:
+       required: true
+       default: 3500
        selector:
          number:
            min: 2200
            max: 5000
            mode: slider
     brightness_k:
+       required: true
+       default: 25.0
        selector:
          number:
     brightness_x:
+       required: true
+       default: 0
        selector:
          number:
     temperature_k:
+       required: true
+       default: 22.0
        selector:
          number:
     temperature_x:
+       required: true
+       default: 0.05
        selector:
          number:
     """
