@@ -55,7 +55,7 @@ def lock(lights = [],
         if light in managed_lights:
             managed_lights[light]["lock"] = (brightness, temperature)
             managed_lights[light]["latch"] = False
-    update()
+    update(force = True)
 
 @service("light.unlock")
 def unlock(lights = []):
@@ -65,7 +65,7 @@ def unlock(lights = []):
         if light in managed_lights:
             managed_lights[light]["lock"] = None
             managed_lights[light]["latch"] = False
-    update()
+    update(force = True)
 
 @service("light.manage")
 def manage(lightset=None,
@@ -111,10 +111,11 @@ fields:
         "brightness":(brightness_k, brightness_x,
                       brightness_min, brightness_max),
         "temperature":(temperature_k, temperature_x,
-                       temperature_min, temperature_max)
+                       temperature_min, temperature_max),
+        "state": None
     }
 
-    update()
+    update(force = True)
 
 def unmanage(lights=[], lightset=None):
     global lightsets, managed_lights
@@ -123,9 +124,9 @@ def unmanage(lights=[], lightset=None):
                                  if v["lightset"] == lightset]:
         managed_lights.pop(light, None)
 
-@time_trigger("cron(*/5 * * * *)")
+@time_trigger("cron(* * * * *)")
 @service("light.update_managed")
-def update(now = None):
+def update(now = None, force = False):
     global lightsets, managed_lights, context
     
     times = get_times(hass)
@@ -137,8 +138,15 @@ def update(now = None):
                         curve(times, parameters["temperature"]))
                   for (name, parameters) in lightsets.items()}
 
+    changed = False
     for name in set_states:
-        lightsets[name]["state"] = set_states[name]
+        if lightsets[name]["state"] != set_states[name]:
+            lightsets[name]["state"] = set_states[name]
+            changed = True
+
+    if not(changed or force):
+        log.warning("No change to the expected states - early exit")
+        return
     
     current_states = {}
     for id in state.names(domain = 'light'):
@@ -275,6 +283,7 @@ def zha_group_members(ref, domain):
             for entity in member.get("device",{}).get("entities",[])
             if entity["entity_id"].startswith(domain)]
 
+# maybe I should be caching this
 @pyscript_compile
 def zha_group_map():
     g2l = defaultdict(set)
