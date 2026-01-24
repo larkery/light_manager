@@ -432,6 +432,7 @@ context = Context()
 async def intercept(call, data):
     global context
     # skip our own calls
+    _LOGGER.warning(f"intercept: {call} {data}")
     if call.context == context: return
     if call.service == SERVICE_TURN_ON:
         await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID)))
