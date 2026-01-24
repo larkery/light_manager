@@ -287,7 +287,7 @@ def update(now = None, force = False, transition = 0):
                 "light", SERVICE_TURN_ON,
                 {ATTR_ENTITY_ID: entity,
                  ATTR_BRIGHTNESS: brightness,
-                 ATTR_COLOR_TEMP_KELVIN: temperature
+                 ATTR_COLOR_TEMP_KELVIN: temperature,
                  ATTR_TRANSITION: transition},
                 context=context
             )
