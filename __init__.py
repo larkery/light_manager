@@ -314,7 +314,8 @@ async def intercept(call, data):
 
         current_state = {}
         target_state = {}
-        # argh we need to fill in all lights as well here?
+        # this won't necessarily work quite right
+        # as we might not have members of every group
         for e in entities:
             s = hass.states.get(e)
             if s:
@@ -335,7 +336,7 @@ async def intercept(call, data):
             # we will maybe intercept this again and insert any needed
             # brightness parameters? not really sure this will work
             # properly anyway
-            await self.hass.services.async_call(
+            await hass.services.async_call(
                 LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ons}
             )
         
@@ -402,7 +403,7 @@ async def intercept_on(data, entities):
                         ATTR_BRIGHTNESS: action[0],
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
-                await self.hass.services.async_call(
+                await hass.services.async_call(
                     LIGHT_DOMAIN, SERVICE_TURN_ON, call_data, context = context
                 )
     
