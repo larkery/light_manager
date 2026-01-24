@@ -505,7 +505,9 @@ async def intercept_on(data, expanded_entities):
             # later we want to do the next thing
             hass.async_create_task(
                 turn_on(
-                    {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID], ATTR_COLOR_TEMP_KELVIN: temp},
+                    {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID],
+                     ATTR_COLOR_TEMP_KELVIN: temp,
+                     ATTR_TRANSITION: params[ATTR_TRANSITION]},
                     params[ATTR_TRANSITION]+0.1
                 )
             )
