@@ -70,8 +70,8 @@ fields:
 def unmanage(lights=[], lightset=None):
     global lightsets, managed_lights
     lights = zha_expand(lights)
-    for light in lights + set(k for (k,v) in managed_lights.items()
-                           if v["lightset"] == lightset):
+    for light in lights + set([k for (k,v) in managed_lights.items()
+                               if v["lightset"] == lightset]):
         del managed_lights[light]
 
 @time_trigger("cron(*/5 * * * *)")
