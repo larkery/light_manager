@@ -6,6 +6,8 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.util.read_only_dict import ReadOnlyDict
 
 from typing import Any
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 ServiceData = dict[str, Any]
 
