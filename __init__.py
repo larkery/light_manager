@@ -254,11 +254,11 @@ interceptors = []
 @time_trigger('startup')
 def init():
     global interceptors
-    interceptors.append(
+    interceptors.extend([
         setup_service_call_interceptor( hass, 'light', 'turn_on', intercept ),
-        setup_service_call_interceptor( hass, 'light', 'turn_off', intercept )
+        setup_service_call_interceptor( hass, 'light', 'turn_off', intercept ),
         setup_service_call_interceptor( hass, 'light', 'toggle', intercept )
-    )
+    ])
 
 @time_trigger('shutdown')
 def cleanup():
