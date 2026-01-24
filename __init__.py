@@ -383,7 +383,7 @@ async def intercept_on(data, entities):
             else:
                 current_state[entity] = False
         actions = reconcile(current_state, target_state)
-        actions = actions.items()
+        actions = list(actions.items())
         if actions:
             (entity, action) = actions[0]
             data[ATTR_ENTITY_ID] = [entity]
