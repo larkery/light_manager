@@ -31,7 +31,7 @@ from homeassistant.components.light import (
 )
 
 from homeassistant.const import (
-    ATTR_ENTITY_ID, SERVICE_TURN_ON, SERVICE_TOGGLE, STATE_ON, STATE_OFF
+    ATTR_ENTITY_ID, SERVICE_TURN_ON, SERVICE_TOGGLE, SERVICE_TURN_OFF, STATE_ON, STATE_OFF
 )
 
 from collections import defaultdict
@@ -171,7 +171,7 @@ def update(now = None):
         # can I use context here??
         if brightness:
             hass.services.async_call(
-                "light", TURN_ON,
+                "light", SERVICE_TURN_ON,
                 {ATTR_ENTITY_ID: entity,
                  ATTR_BRIGHTNESS: brightness,
                  ATTR_COLOR_TEMP_KELVIN: temperature},
@@ -179,7 +179,7 @@ def update(now = None):
             )
         else:
             hass.services.async_call(
-                "light", TURN_OFF,
+                "light", SERVICE_TURN_OFF,
                 {ATTR_ENTITY_ID:entity},
                 context=context
             )
@@ -300,11 +300,11 @@ async def intercept(call, data):
     global context
     # skip our own calls
     if call.context == context: return
-    if call.service == TURN_ON:
+    if call.service == SERVICE_TURN_ON:
         await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID)))
-    elif call.service == TURN_OFF:
+    elif call.service == SERVICE_TURN_OFF:
         latch_off(zha_expand(data.get(ATTR_ENTITY_ID)))
-    elif call.service == TOGGLE:
+    elif call.service == SERVICE_TOGGLE:
         entities = data.get(ATTR_ENTITY_ID)
         offs,ons = [],[]
 
@@ -415,9 +415,9 @@ interceptors = []
 def init():
     global interceptors
     interceptors.extend([
-        setup_service_call_interceptor( hass, 'light', TURN_ON, intercept ),
-        setup_service_call_interceptor( hass, 'light', TURN_OFF, intercept ),
-        setup_service_call_interceptor( hass, 'light', TOGGLE, intercept )
+        setup_service_call_interceptor( hass, 'light', SERVICE_TURN_ON, intercept ),
+        setup_service_call_interceptor( hass, 'light', SERVICE_TURN_OFF, intercept ),
+        setup_service_call_interceptor( hass, 'light', SERVICE_TOGGLE, intercept )
     ])
 
 @time_trigger('shutdown')
