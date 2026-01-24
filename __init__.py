@@ -38,7 +38,7 @@ def manage(lightset,
     for light in lights:
         managed_lights[light] = {
             "lightset": lightset, 
-            "lock" = None, # or (brightness, temperature)
+            "lock": None, # or (brightness, temperature)
         }
 
     lightsets[lightset] = {
