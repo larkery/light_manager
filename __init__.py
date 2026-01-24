@@ -107,7 +107,7 @@ def update():
             hass.services.async_call(
                 "light", "turn_on",
                 {ATTR_BRIGHTNESS: brightness,
-                 ATTR_COLOR_TEMP_KELVIN: temperature}
+                 ATTR_COLOR_TEMP_KELVIN: temperature},
                 context=context
             )
         else:
