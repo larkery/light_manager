@@ -235,7 +235,7 @@ def zha_group_map():
 context = Context()
 
 @pyscript_compile
-def intercept(call, data):
+async def intercept(call, data):
     global context
     # skip our own calls
     if call.context == context: return
