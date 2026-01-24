@@ -77,7 +77,10 @@ def update(now = None):
     global lightsets, managed_lights, context
     
     times = get_times(hass)
-    if now: times[0] = now
+    if now:
+        times = list(times)
+        times[0] = now
+        times = tuple(times)
     set_states = {name:(curve(times, parameters["brightness"]),
                         curve(times, parameters["temperature"]))
                   for (name, parameters) in lightsets.items()}
