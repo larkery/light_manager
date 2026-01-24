@@ -6,6 +6,7 @@ from homeassistant.components.light import (
     ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN
 )
 from collections import defaultdict
+from math import tanh
 
 @time_trigger('startup')
 def init():
