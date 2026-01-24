@@ -147,7 +147,7 @@ def zha_group_map():
         for ref in refs:
             entity_id = ref.ha_entity_id
             if ref.entity_data.group_proxy:
-                members = group_members(ref, 'light.')
+                members = zha_group_members(ref, 'light.')
                 g2l[entity_id].update(members)
                 for m in members: l2g[m].add(entity_id)
     # if a group is fully within another group, l2g[sub] -> super
