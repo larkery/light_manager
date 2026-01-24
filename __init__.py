@@ -337,7 +337,7 @@ async def intercept(call, data):
             # brightness parameters? not really sure this will work
             # properly anyway
             await hass.services.async_call(
-                LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ons}
+                "light", SERVICE_TURN_ON, {ATTR_ENTITY_ID: ons}
             )
         
 @pyscript_compile
@@ -404,7 +404,7 @@ async def intercept_on(data, entities):
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
                 await hass.services.async_call(
-                    LIGHT_DOMAIN, SERVICE_TURN_ON, call_data, context = context
+                    "light", SERVICE_TURN_ON, call_data, context = context
                 )
     
 @pyscript_compile
