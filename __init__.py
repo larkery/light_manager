@@ -5,6 +5,7 @@ from homeassistant.helpers.sun import get_astral_location
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN
 )
+from collections import defaultdict
 
 @time_trigger('startup')
 def init():
