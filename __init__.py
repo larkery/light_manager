@@ -394,7 +394,7 @@ async def intercept_on(data, entities):
                 call_data = {ATTR_ENTITY_ID: [entity]}
                 if type(action) is tuple:
                     call_data["params"] = {
-                        ATTR_BRIGHTNESS: action[0]
+                        ATTR_BRIGHTNESS: action[0],
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
                 await self.hass.services.async_call(
