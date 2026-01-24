@@ -72,10 +72,12 @@ def unmanage(lights=[], lightset=None):
         managed_lights.pop(light, None)
 
 @time_trigger("cron(*/5 * * * *)")
-def update():
+@service("light.update_managed")
+def update(now = None):
     global lightsets, managed_lights, context
-
+    
     times = get_times(hass)
+    if now: times[0] = now
     set_states = {name:(curve(times, parameters["brightness"]),
                         curve(times, parameters["temperature"]))
                   for (name, parameters) in lightsets.items()}
@@ -101,7 +103,7 @@ def update():
 
     log.warning(f"AIM FOR {target_states} execute {actions}")
 
-    for entity, (brightness, temperature) in actions:
+    for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
         if brightness:
             hass.services.async_call(
@@ -115,7 +117,6 @@ def update():
                 "light", "turn_off",
                 context=context
             )
-
 
 @pyscript_compile
 def reconcile(current_states, target_states):
