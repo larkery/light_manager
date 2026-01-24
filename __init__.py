@@ -128,7 +128,7 @@ def zha_expand(entities):
     l2g, g2l = zha_group_map()
     out = set()
     for e in entities:
-        if e in g2l: out.update(g2l[e])
+        if len(g2l[e]): out.update(g2l[e])
         else: out.add(e)
     return out
 
