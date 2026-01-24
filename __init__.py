@@ -578,7 +578,6 @@ async def turn_on(data, delay = 0):
     if ATTR_TRANSITION in data and \
        ATTR_BRIGHTNESS in data and \
        ATTR_COLOR_TEMP_KELVIN in data:
-        data[ATTR_TRANSITION] = data[ATTR_TRANSITION]/2
         temp = data[ATTR_COLOR_TEMP_KELVIN]
         del data[ATTR_COLOR_TEMP_KELVIN]
         await hass.services.async_call(
