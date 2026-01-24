@@ -84,16 +84,45 @@ description: Set lights to solar management
 fields:
     lightset:
       required: true
+      selector:
+        text:
     lights:
       required: true
+      selector:
+        entity:
+          filter:
+            domain: light
+          multiple: true
     brightness_min:
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
     brightness_max:
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
     brightness_k:
+       selector:
+         number:
     brightness_x:
+       selector:
+         number:
     temperature_min:
+       selector:
+         number:
     temperature_max:
+       selector:
+         number:
     temperature_k:
+       selector:
+         number:
     temperature_x:
+       selector:
+         number:
     """
     global lightsets, managed_lights
     lights = zha_expand(lights)
@@ -117,6 +146,7 @@ fields:
 
     update(force = True)
 
+@service("light.unmanage")
 def unmanage(lights=[], lightset=None):
     global lightsets, managed_lights
     lights = zha_expand(lights)
