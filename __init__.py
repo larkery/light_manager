@@ -49,6 +49,29 @@ managed_lights = {}
 def lock(lights = [],
          brightness = None,
          temperature = None):
+    """yaml
+name: Lock lights to temperature
+fields:
+    lights:
+      required: true
+      selector:
+        entity:
+          filter:
+            domain: light
+          multiple: true
+    brightness:
+       required: true
+       selector:
+         number:
+           min: 1
+           max: 255
+    temperature:
+       required: true
+       selector:
+         number:
+           min: 2200
+           max: 5000
+    """
     global managed_lights
     lights = zha_expand(lights)
     for light in lights:
@@ -59,6 +82,18 @@ def lock(lights = [],
 
 @service("light.unlock")
 def unlock(lights = []):
+    """yaml
+name: Unlock managed lights
+fields:
+    lights:
+      required: true
+      selector:
+        entity:
+          filter:
+            domain: light
+          multiple: true
+
+    """
     global managed_lights
     lights = zha_expand(lights)
     for light in lights:
@@ -154,6 +189,20 @@ fields:
 
 @service("light.unmanage")
 def unmanage(lights=[], lightset=None):
+    """yaml
+name: Stop managing lights
+fields:
+    lightset:
+      selector:
+        text:
+    lights:
+      required: true
+      selector:
+        entity:
+          filter:
+            domain: light
+          multiple: true
+    """
     global lightsets, managed_lights
     lights = zha_expand(lights)
     for light in list(lights) + [k for (k,v) in managed_lights.items()
