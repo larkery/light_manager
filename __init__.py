@@ -109,10 +109,14 @@ fields:
        selector:
          color_temp:
            unit: kelvin
+           min: 2200
+           max: 4000
     temperature_max:
        selector:
          color_temp:
            unit: kelvin
+           min: 2200
+           max: 4000
     brightness_k:
        selector:
          number:
