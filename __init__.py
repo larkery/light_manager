@@ -52,8 +52,9 @@ def lock(lights = [],
     global managed_lights
     lights = zha_expand(lights)
     for light in lights:
-        managed_lights[light]["lock"] = (brightness, temperature)
-        managed_lights[light]["latch"] = False
+        if light in managed_lights:
+            managed_lights[light]["lock"] = (brightness, temperature)
+            managed_lights[light]["latch"] = False
     update()
 
 @service("light.unlock")
@@ -61,8 +62,9 @@ def unlock(lights = []):
     global managed_lights
     lights = zha_expand(lights)
     for light in lights:
-        managed_lights[light]["lock"] = None
-        managed_lights[light]["latch"] = False
+        if light in managed_lights:
+            managed_lights[light]["lock"] = None
+            managed_lights[light]["latch"] = False
     update()
 
 @service("light.manage")
