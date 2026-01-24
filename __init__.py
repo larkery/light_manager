@@ -286,13 +286,11 @@ def update(now = None, force = False, transition = 0):
     for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
         if brightness:
-            hass.async_create_task(
-                turn_on({
-                    ATTR_ENTITY_ID: entity,
-                    ATTR_BRIGHTNESS: brightness,
-                    ATTR_TRANSITION: transition
-                } )
-            )
+            turn_on({
+                ATTR_ENTITY_ID: entity,
+                ATTR_BRIGHTNESS: brightness,
+                ATTR_TRANSITION: transition
+            })
         else:
             hass.services.async_call(
                 "light", SERVICE_TURN_OFF,
@@ -488,13 +486,11 @@ async def intercept_on(data, expanded_entities):
             del params[ATTR_COLOR_TEMP_KELVIN]
             params[ATTR_TRANSITION] = params[ATTR_TRANSITION] / 2
             # later we want to do the next thing
-            hass.async_create_task(
-                turn_on(
-                    {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID],
-                     ATTR_COLOR_TEMP_KELVIN: temp,
-                     ATTR_TRANSITION: params[ATTR_TRANSITION]},
-                    params[ATTR_TRANSITION]+0.1
-                )
+            turn_on(
+                {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID],
+                 ATTR_COLOR_TEMP_KELVIN: temp,
+                 ATTR_TRANSITION: params[ATTR_TRANSITION]},
+                params[ATTR_TRANSITION]+0.1
             )
     else:
         # early abort
@@ -540,15 +536,12 @@ async def intercept_on(data, expanded_entities):
                 params[ATTR_TRANSITION] = params[ATTR_TRANSITION] / 2
                 del params[ATTR_COLOR_TEMP_KELVIN]
                 # later we want to do the next thing
-                hass.async_create_task(
-                    turn_on(
-                        {ATTR_ENTITY_ID: [entity],
-                         ATTR_COLOR_TEMP_KELVIN: temp,
-                         ATTR_TRANSITION: params[ATTR_TRANSITION]},
-                        params[ATTR_TRANSITION]+0.1
-                    )
+                turn_on(
+                    {ATTR_ENTITY_ID: [entity],
+                     ATTR_COLOR_TEMP_KELVIN: temp,
+                     ATTR_TRANSITION: params[ATTR_TRANSITION]},
+                    params[ATTR_TRANSITION]+0.1
                 )
-                
             # extra actions:
             for (entity, action) in actions[1:]:
                 call_data = params | {ATTR_ENTITY_ID: [entity]}
@@ -557,10 +550,14 @@ async def intercept_on(data, expanded_entities):
                         ATTR_BRIGHTNESS: action[0],
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
-                hass.async_create_task(turn_on(call_data))
-    
+                turn_on(call_data)
+                
 @pyscript_compile
-async def turn_on(data, delay = 0):
+def turn_on(data, delay = 0):
+    hass.async_create_task(turn_on(data, delay = delay))    
+
+@pyscript_compile
+async def _turn_on(data, delay = 0):
     if delay:
         await asyncio.sleep(delay)
     if ATTR_TRANSITION in data and \
