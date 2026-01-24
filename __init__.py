@@ -131,7 +131,6 @@ def zha_expand(entities):
     for e in entities:
         if len(g2l[e]): out.update(g2l[e])
         else: out.add(e)
-        log.message(f"{e} => {g2l[e]} => {out}")
     return out
 
 @pyscript_compile
