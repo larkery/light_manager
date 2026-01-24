@@ -143,7 +143,7 @@ def update(now = None):
         val = state.get(id)
         if val == 'unavailable': continue
         att = state.getattr(id)
-        if val == 'off' and managed_lights.get(id, {}).get("latch", True):
+        if val == 'off' and managed_lights.get(id, {}).get("latch", False):
             ## toggle latch for a locked state
             managed_lights[id]["lock"] = None
             managed_lights[id]["latch"] = False
