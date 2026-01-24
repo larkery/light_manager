@@ -195,6 +195,7 @@ def update(now = None, force = False):
                 {ATTR_ENTITY_ID:entity},
                 context=context
             )
+        task.sleep(0.4)
 
 @pyscript_compile
 def reconcile(current_states, target_states):
