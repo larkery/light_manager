@@ -500,6 +500,7 @@ async def intercept_on(data, expanded_entities):
             # we leave alone will happen first; that will be transition brightness
             temp = params[ATTR_COLOR_TEMP_KELVIN]
             del params[ATTR_COLOR_TEMP_KELVIN]
+            params[ATTR_TRANSITION] = params[ATTR_TRANSITION] / 2
             # later we want to do the next thing
             hass.async_create_task(
                 turn_on(
@@ -568,7 +569,7 @@ async def intercept_on(data, expanded_entities):
                         ATTR_BRIGHTNESS: action[0],
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
-                await turn_on(call_data)
+                hass.async_create_task(turn_on(call_data))
     
 @pyscript_compile
 async def turn_on(data, delay = 0):
