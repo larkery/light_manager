@@ -166,6 +166,8 @@ def update(now = None):
     actions = reconcile(current_states, target_states)
 
     log.warning(f"AIM FOR {target_states} execute {actions}")
+    log.warning(f"MANAGING {managed_lights}")
+    log.warning(f"SETS {lightsets}")    
 
     for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
