@@ -80,7 +80,7 @@ fields:
         if light in managed_lights:
             managed_lights[light]["lock"] = (brightness, temperature)
             managed_lights[light]["latch"] = False
-    update(force = True)
+    update(force = True, transition = 1.5)
 
 @service("light.unlock")
 def unlock(lights = []):
@@ -229,7 +229,7 @@ fields:
 
 @time_trigger("cron(* * * * *)")
 @service("light.update_managed")
-def update(now = None, force = False):
+def update(now = None, force = False, transition = 0):
     global lightsets, managed_lights, context
     
     times = get_times(hass)
@@ -279,8 +279,6 @@ def update(now = None, force = False):
     actions = reconcile(current_states, target_states)
 
     log.warning(f"AIM FOR {target_states} execute {actions}")
-    log.warning(f"MANAGING {managed_lights}")
-    log.warning(f"SETS {lightsets}")    
 
     for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
@@ -289,7 +287,8 @@ def update(now = None, force = False):
                 "light", SERVICE_TURN_ON,
                 {ATTR_ENTITY_ID: entity,
                  ATTR_BRIGHTNESS: brightness,
-                 ATTR_COLOR_TEMP_KELVIN: temperature},
+                 ATTR_COLOR_TEMP_KELVIN: temperature
+                 ATTR_TRANSITION: transition},
                 context=context
             )
         else:
