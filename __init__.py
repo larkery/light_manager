@@ -571,19 +571,18 @@ async def intercept_on(data, expanded_entities):
 async def turn_on(data, delay = 0):
     if delay:
         await asyncio.sleep(delay)
-    params = data["params"]
-    if ATTR_TRANSITION in params and \
-       ATTR_BRIGHTNESS in params and \
-       ATTR_COLOR_TEMP_KELVIN in params:
-        temp = params[ATTR_COLOR_TEMP_KELVIN]
-        del params[ATTR_COLOR_TEMP_KELVIN]
+    if ATTR_TRANSITION in data and \
+       ATTR_BRIGHTNESS in data and \
+       ATTR_COLOR_TEMP_KELVIN in data:
+        temp = data[ATTR_COLOR_TEMP_KELVIN]
+        del data[ATTR_COLOR_TEMP_KELVIN]
         await hass.services.async_call(
             "light", SERVICE_TURN_ON, data, context = context
         )
-        asyncio.sleep(params[ATTR_TRANSITION]+0.1)
-        del params[ATTR_BRIGHTNESS]
-        del params[ATTR_TRANSITION]
-        params[ATTR_COLOR_TEMP_KELVIN] = temp
+        asyncio.sleep(data[ATTR_TRANSITION]+0.1)
+        del data[ATTR_BRIGHTNESS]
+        del data[ATTR_TRANSITION]
+        data[ATTR_COLOR_TEMP_KELVIN] = temp
         await hass.services.async_call(
             "light", SERVICE_TURN_ON, data, context = context
         )
