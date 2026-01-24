@@ -548,11 +548,14 @@ async def intercept_on(data, expanded_entities):
                 # we are running within the interceptor, so whatever
                 # we leave alone will happen first; that will be transition brightness
                 temp = params[ATTR_COLOR_TEMP_KELVIN]
+                params[ATTR_TRANSITION] = params[ATTR_TRANSITION] / 2
                 del params[ATTR_COLOR_TEMP_KELVIN]
                 # later we want to do the next thing
                 hass.async_create_task(
                     turn_on(
-                        {ATTR_ENTITY_ID: [entity], ATTR_COLOR_TEMP_KELVIN: temp},
+                        {ATTR_ENTITY_ID: [entity],
+                         ATTR_COLOR_TEMP_KELVIN: temp
+                         ATTR_TRANSITION: params[ATTR_TRANSITION]},
                         params[ATTR_TRANSITION]+0.1
                     )
                 )
@@ -574,6 +577,7 @@ async def turn_on(data, delay = 0):
     if ATTR_TRANSITION in data and \
        ATTR_BRIGHTNESS in data and \
        ATTR_COLOR_TEMP_KELVIN in data:
+        data[ATTR_TRANSITION] = data[ATTR_TRANSITION]/2
         temp = data[ATTR_COLOR_TEMP_KELVIN]
         del data[ATTR_COLOR_TEMP_KELVIN]
         await hass.services.async_call(
@@ -581,7 +585,6 @@ async def turn_on(data, delay = 0):
         )
         asyncio.sleep(data[ATTR_TRANSITION]+0.1)
         del data[ATTR_BRIGHTNESS]
-        del data[ATTR_TRANSITION]
         data[ATTR_COLOR_TEMP_KELVIN] = temp
         await hass.services.async_call(
             "light", SERVICE_TURN_ON, data, context = context
