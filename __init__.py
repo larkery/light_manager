@@ -72,7 +72,7 @@ def unmanage(lights=[], lightset=None):
     lights = zha_expand(lights)
     for light in list(lights) + [k for (k,v) in managed_lights.items()
                                  if v["lightset"] == lightset]:
-        del managed_lights[light]
+        managed_lights.pop(light, None)
 
 @time_trigger("cron(*/5 * * * *)")
 def update():
@@ -96,7 +96,7 @@ def update():
                      for name in managed_lights
                      if current_states[name][0]}
 
-    log.warning(f"AIM FOR {target_state}")
+    log.warning(f"AIM FOR {target_states}")
         
 def curve(times, params):
     now, sunrise, noon, sunset = times
