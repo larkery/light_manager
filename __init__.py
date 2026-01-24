@@ -20,16 +20,34 @@ lightsets = {}
 # light entity -> stuff
 managed_lights = {}
 
-def manage(lightset,
-           lights, # a list of entity IDs
-           brightness_min,
-           brightness_max,
-           brightness_k,
-           brightness_x,
-           temperature_min,
-           temperature_max,
-           temperature_k,
-           temperature_x):
+@service("light.manage")
+def manage(lightset=None,
+           lights=[], # a list of entity IDs
+           brightness_min=150.0,
+           brightness_max=255.0,
+           brightness_k = 25.0,
+           brightness_x = 0.0,
+           temperature_min = 2210,
+           temperature_max = 4000,
+           temperature_k = 22.0,
+           temperature_x = 0.05):
+    """yaml
+name: Manage lights
+description: Set lights to solar management
+fields:
+    lightset:
+      required: true
+    lights:
+      required: true
+    brightness_min:
+    brightness_max:
+    brightness_k:
+    brightness_x:
+    temperature_min:
+    temperature_max:
+    temperature_k:
+    temperature_x:
+    """
     global lightsets, managed_lights
     lights = zha_expand(lights)
     unmanage(lights)
@@ -55,6 +73,7 @@ def unmanage(lights=[], lightset=None):
                            if v["lightset"] == lightset]:
         del managed_lights[light]
 
+@time_trigger("cron(*/5 * * * *)")
 def update():
     global lightsets, managed_lights
 
