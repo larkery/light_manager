@@ -80,7 +80,7 @@ fields:
         if light in managed_lights:
             managed_lights[light]["lock"] = (brightness, temperature)
             managed_lights[light]["latch"] = False
-    update(force = True, transition = 1.5)
+    update(force = True, transition = 2)
 
 @service("light.unlock")
 def unlock(lights = []):
