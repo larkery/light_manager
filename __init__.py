@@ -10,7 +10,7 @@ from homeassistant.components.light import (
 def init():
     pass
 
-@time_trigger('shutdown'):
+@time_trigger('shutdown')
 def cleanup():
     pass
 
