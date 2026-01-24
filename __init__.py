@@ -359,8 +359,8 @@ async def intercept_on(data, entities):
     if latches:
         for entity in expanded_entities:
             if entity in managed_lights:
-                managed_lights[entity]["latch"] = True
-                managed_lights[entity]["lock"] = None
+                if not(managed_lights[entity]["lock"]):
+                    managed_lights[entity]["latch"] = True
     else:
         target_state = {}
         current_state = {}
