@@ -503,7 +503,7 @@ async def intercept_on(data, expanded_entities):
             # later we want to do the next thing
             hass.async_create_task(
                 turn_on(
-                    {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
+                    {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID], ATTR_COLOR_TEMP_KELVIN: temp},
                     params[ATTR_TRANSITION]+0.1
                 )
             )
@@ -552,16 +552,16 @@ async def intercept_on(data, expanded_entities):
                 # later we want to do the next thing
                 hass.async_create_task(
                     turn_on(
-                        {ATTR_ENTITY_ID: [entity], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
+                        {ATTR_ENTITY_ID: [entity], ATTR_COLOR_TEMP_KELVIN: temp},
                         params[ATTR_TRANSITION]+0.1
                     )
                 )
                 
             # extra actions:
             for (entity, action) in actions[1:]:
-                call_data = {ATTR_ENTITY_ID: [entity], "params": data["params"] | {}}
+                call_data = params | {ATTR_ENTITY_ID: [entity]}
                 if type(action) is tuple:
-                    call_data["params"] = data[params] | {
+                    call_data = call_data | {
                         ATTR_BRIGHTNESS: action[0],
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
