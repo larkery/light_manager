@@ -126,7 +126,7 @@ def get_times(hass):
 
 @pyscript_compile
 def zha_expand(entities):
-    l2g, g2l = zha_group_map()
+    g2l, l2g = zha_group_map()
     out = set()
     for e in entities:
         if len(g2l[e]): out.update(g2l[e])
