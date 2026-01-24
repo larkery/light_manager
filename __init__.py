@@ -111,13 +111,15 @@ def update(now = None):
         if brightness:
             hass.services.async_call(
                 "light", "turn_on",
-                {ATTR_BRIGHTNESS: brightness,
+                {"entity_id": entity,
+                 ATTR_BRIGHTNESS: brightness,
                  ATTR_COLOR_TEMP_KELVIN: temperature},
                 context=context
             )
         else:
             hass.services.async_call(
                 "light", "turn_off",
+                {"entity_id":entity},
                 context=context
             )
 
