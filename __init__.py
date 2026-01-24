@@ -5,16 +5,11 @@ from homeassistant.helpers.sun import get_astral_location
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN
 )
+
 from collections import defaultdict
 from math import tanh
 
-@time_trigger('startup')
-def init():
-    pass
-
-@time_trigger('shutdown')
-def cleanup():
-    pass
+from homeassistant.core import Context
 
 # block name -> settings
 lightsets = {}
@@ -59,8 +54,8 @@ fields:
         managed_lights[light] = {
             "lightset": lightset, 
             "lock": None, # or (brightness, temperature)
+            "latch": False # latch clears lock on turn off
         }
-        log.warning(f"managing {light}")
 
     lightsets[lightset] = {
         "brightness":(brightness_k, brightness_x,
@@ -78,13 +73,13 @@ def unmanage(lights=[], lightset=None):
 
 @time_trigger("cron(*/5 * * * *)")
 def update():
-    global lightsets, managed_lights
+    global lightsets, managed_lights, context
 
     times = get_times(hass)
     set_states = {name:(curve(times, parameters["brightness"]),
                         curve(times, parameters["temperature"]))
                   for (name, parameters) in lightsets.items()}
-
+    
     current_states = {}
     for id in state.names(domain = 'light'):
         val = state.get(id)
@@ -92,13 +87,79 @@ def update():
         att = state.getattr(id)
         current_states[id] = (att.get(ATTR_BRIGHTNESS, None),
                               att.get(ATTR_COLOR_TEMP_KELVIN, None))
-    
+
+    # brightness and temperature should either be whatever
+    # is in lock, or whatever the lightset says, or OFF
+    # if the light is off. Next we want to reconcile these
+    # and then issue the minimal set of zigbee commands
     target_states = {name:(managed_lights[name]["lock"] or
                            set_states[managed_lights[name]["lightset"]])
                      for name in managed_lights
                      if current_states[name][0]}
 
-    log.warning(f"AIM FOR {target_states}")
+    actions = reconcile(current_states, target_states)
+
+    log.warning(f"AIM FOR {target_states} execute {actions}")
+
+    for entity, (brightness, temperature) in actions:
+        # can I use context here??
+        if brightness:
+            hass.services.async_call(
+                "light", "turn_on",
+                {ATTR_BRIGHTNESS: brightness,
+                 ATTR_COLOR_TEMP_KELVIN: temperature}
+                context=context
+            )
+        else:
+            hass.services.async_call(
+                "light", "turn_off",
+                context=context
+            )
+
+
+@pyscript_compile
+def reconcile(current_states, target_states):
+    (g2l, l2g) = zha_group_map()
+    actions = {}
+    action_entity = {}
+
+    for (entity, tgt) in sorted(target_states.items(),
+                                key = lambda x : -len(g2l.get(x[0], []))):
+        for entity in g2l.get(entity, [entity]):
+            if current_states[entity] != tgt:
+                actions[entity] = tgt
+                action_entity[entity] = entity
+            elif entity in actions:
+                del actions[entity]
+                del action_entity[entity]
+
+    target_states = actions
+    if len(actions) > 1: ## only optimise if there are multiple changes to execute
+        ## expand out all the groups we could use
+        relevant_groups = set([])
+        for entity in actions.keys():
+            relevant_groups.update(l2g[entity])
+
+        ## for each group we could use, can we use it to get to target?
+        relevant_groups = list(sorted(relevant_groups, key= lambda g:len(g2l[g])))
+        for g in relevant_groups:
+            ls = g2l.get(g, set())
+            states = set([target_states.get(l, current_states.get(l)) for l in ls])
+            if len(states) == 1: # can use group
+                # is it better to use it or not?
+                # this is how many distinct actions we already have for these lights
+                cur = len(set([action_entity[l] for l in ls if l in action_entity]))
+                if cur > 1:
+                    for l in ls:
+                        action_entity[l] = g
+                        actions[g] = list(states)[0]
+        actions_2 = {}
+        for e,a in actions.items():
+            if e in action_entity:
+                actions_2[action_entity[e]] = a
+        actions = actions_2
+
+    return actions
         
 def curve(times, params):
     now, sunrise, noon, sunset = times
@@ -123,6 +184,8 @@ def get_times(hass):
     now = (now.hour + now.minute / 60) / 24
 
     return (now, sunrise, noon, sunset)
+
+##################### poking about in zha ##########
 
 @pyscript_compile
 def zha_expand(entities):
@@ -160,3 +223,45 @@ def zha_group_map():
         for g2 in other_groups:
             l2g[g].add(g2)
     return (g2l, l2g)
+
+########### intercepting off/on/toggle ################
+
+context = Context()
+
+@pyscript_compile
+def intercept(call, data):
+    global context
+    # skip our own calls
+    if call.context == context: return
+    if call.service == 'turn_on':
+        intercept_on(data)
+    elif call.service == 'turn_off':
+        intercept_off(data)
+    elif call.service == 'toggle':
+        # toggle is annoying
+        pass
+
+@pyscript_compile
+def intercept_on(data):
+    pass
+
+@pyscript_compile
+def intercept_off(data):
+    pass
+
+interceptors = []
+
+@time_trigger('startup')
+def init():
+    global interceptors
+    interceptors.append(
+        setup_service_call_interceptor( hass, 'light', 'turn_on', intercept ),
+        setup_service_call_interceptor( hass, 'light', 'turn_off', intercept )
+        setup_service_call_interceptor( hass, 'light', 'toggle', intercept )
+    )
+
+@time_trigger('shutdown')
+def cleanup():
+    global interceptors
+    for i in interceptors: i()
+    interceptors = []
