@@ -5,6 +5,9 @@
 ## ZIGTIMISE
 ## Merge in on/off stuff?
 ## Add transitions? Split commands in interceptor?
+import asyncio
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from .interceptor import setup_service_call_interceptor
 
@@ -283,14 +286,28 @@ def update(now = None, force = False, transition = 0):
     for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
         if brightness:
-            hass.services.async_call(
-                "light", SERVICE_TURN_ON,
-                {ATTR_ENTITY_ID: entity,
-                 ATTR_BRIGHTNESS: brightness,
-                 ATTR_COLOR_TEMP_KELVIN: temperature,
-                 ATTR_TRANSITION: transition},
-                context=context
-            )
+            if transition:
+                hass.services.async_call(
+                    "light", SERVICE_TURN_ON,
+                    {ATTR_ENTITY_ID: entity,
+                     ATTR_BRIGHTNESS: brightness,
+                     ATTR_TRANSITION: transition},
+                    context=context
+                )
+                task.sleep(transition+0.5) # ikea
+                hass.services.async_call(
+                    "light", SERVICE_TURN_ON,
+                    {ATTR_ENTITY_ID: entity, ATTR_COLOR_TEMP_KELVIN: temperature},
+                    context=context
+                )
+            else:
+                hass.services.async_call(
+                    "light", SERVICE_TURN_ON,
+                    {ATTR_ENTITY_ID: entity,
+                     ATTR_BRIGHTNESS: brightness,
+                     ATTR_COLOR_TEMP_KELVIN: temperature},
+                    context=context
+                )
         else:
             hass.services.async_call(
                 "light", SERVICE_TURN_OFF,
@@ -453,14 +470,9 @@ async def intercept(call, data):
             )
         
 @pyscript_compile
-async def intercept_on(data, entities):
+async def intercept_on(data, expanded_entities):
     global lighsets, managed_lights, context
-    expanded_entities = zha_expand(entities)
     # does it affect our entities?
-    for entity in expanded_entities:
-        if entity in managed_lights: break
-    else:
-        return
     params = data["params"]
     latches =  ATTR_BRIGHTNESS in params \
         or ATTR_BRIGHTNESS_PCT in params \
@@ -475,11 +487,29 @@ async def intercept_on(data, entities):
         or ATTR_WHITE in params \
         or ATTR_COLOR_NAME in params
     if latches:
+        # TODO could zigtimise here
         for entity in expanded_entities:
             if entity in managed_lights:
                 if not(managed_lights[entity]["lock"]):
                     managed_lights[entity]["latch"] = True
+
+        if ATTR_TRANSITION in params and \
+           ATTR_BRIGHTNESS in params and \
+           ATTR_COLOR_TEMP_KELVIN in params:
+            # we are running within the interceptor, so whatever
+            # we leave alone will happen first; that will be transition brightness
+            temp = params[ATTR_COLOR_TEMP_KELVIN]
+            del params[ATTR_COLOR_TEMP_KELVIN]
+            # later we want to do the next thing
+            task.create(turn_on_later,
+                        {ATTR_ENTITY_ID: data[ATTR_ENTITY_ID], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
+                        params[ATTR_TRANSITION]+0.1)
     else:
+        # early abort
+        for entity in expanded_entities:
+            if entity in managed_lights: break
+        else: return
+
         target_state = {}
         current_state = {}
         for entity in expanded_entities:
@@ -505,20 +535,57 @@ async def intercept_on(data, entities):
         if actions:
             (entity, action) = actions[0]
             data[ATTR_ENTITY_ID] = [entity]
+            # body own action
             if type(action) is tuple:
                 params[ATTR_BRIGHTNESS] = action[0]
                 params[ATTR_COLOR_TEMP_KELVIN] = action[1]
+            if ATTR_TRANSITION in params and \
+               ATTR_BRIGHTNESS in params and \
+               ATTR_COLOR_TEMP_KELVIN in params:
+                # we are running within the interceptor, so whatever
+                # we leave alone will happen first; that will be transition brightness
+                temp = params[ATTR_COLOR_TEMP_KELVIN]
+                del params[ATTR_COLOR_TEMP_KELVIN]
+                # later we want to do the next thing
+                task.create(turn_on_later,
+                            {ATTR_ENTITY_ID: [entity], "params": {ATTR_COLOR_TEMP_KELVIN: temp}},
+                            params[ATTR_TRANSITION]+0.1)
+                
+            # extra actions:
             for (entity, action) in actions[1:]:
-                call_data = {ATTR_ENTITY_ID: [entity]}
+                call_data = {ATTR_ENTITY_ID: [entity], "params": data["params"] | {}}
                 if type(action) is tuple:
-                    call_data["params"] = {
+                    call_data["params"] = data[params] | {
                         ATTR_BRIGHTNESS: action[0],
                         ATTR_COLOR_TEMP_KELVIN: action[1]
                     }
-                await hass.services.async_call(
-                    "light", SERVICE_TURN_ON, call_data, context = context
-                )
+                await turn_on(call_data)
     
+@pyscript_compile
+async def turn_on(data, delay = 0):
+    if delay:
+        await asyncio.sleep(delay)
+    params = data["params"]
+    if ATTR_TRANSITION in params and \
+       ATTR_BRIGHTNESS in params and \
+       ATTR_COLOR_TEMP_KELVIN in params:
+        temp = params[ATTR_COLOR_TEMP_KELVIN]
+        del params[ATTR_COLOR_TEMP_KELVIN]
+        await hass.services.async_call(
+            "light", SERVICE_TURN_ON, data, context = context
+        )
+        asyncio.sleep(params[ATTR_TRANSITION]+0.1)
+        del params[ATTR_BRIGHTNESS]
+        del params[ATTR_TRANSITION]
+        params[ATTR_COLOR_TEMP_KELVIN] = temp
+        await hass.services.async_call(
+            "light", SERVICE_TURN_ON, data, context = context
+        )
+    else:
+        await hass.services.async_call(
+            "light", SERVICE_TURN_ON, data, context = context
+        )
+
 @pyscript_compile
 def latch_off(entities):
     global managed_lights
