@@ -83,6 +83,7 @@ fields:
         if light in managed_lights:
             managed_lights[light]["lock"] = (brightness, temperature)
             managed_lights[light]["latch"] = False
+    task.sleep(0.2)
     update(force = True, transition = 2)
 
 @service("light.unlock")
@@ -424,8 +425,9 @@ async def intercept(call, data):
     global context
     # skip our own calls
     if call.context == context: return
+    _LOGGER.warning(f"INTERCEPT: {call.service} {call.context} {data.get(ATTR_ENTITY_ID)} {data['params']}")
     if call.service == SERVICE_TURN_ON:
-        await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID)))
+        await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID, [])))
     elif call.service == SERVICE_TURN_OFF:
         latch_off(zha_expand(data.get(ATTR_ENTITY_ID)))
     elif call.service == SERVICE_TOGGLE:
