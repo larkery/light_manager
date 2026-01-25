@@ -452,7 +452,7 @@ async def intercept(call, data):
 
         ## optimise turn off messages
         target_state = {id: False for id in data.get(ATTR_ENTITY_ID)}
-        all_states = await hass.states.async_all()
+        all_states = hass.states.async_all()
         current_state = {entity.entity_id: entity.state == STATE_ON
                          for entity in all_states
                          if entity.entity_id.startswith('light.')}
