@@ -195,7 +195,7 @@ fields:
         managed_lights[light] = {
             "lightset": lightset, 
             "lock": None, # or (brightness, temperature)
-            "latch": False # latch clears lock on turn off
+            "latch": False # latch is whether to ignore until next off
         }
 
     lightsets[lightset] = {
@@ -260,8 +260,6 @@ def update(now = None, force = False, transition = 0):
         if val == 'unavailable': continue
         att = state.getattr(id)
         if val == 'off' and managed_lights.get(id, {}).get("latch", False):
-            ## toggle latch for a locked state
-            managed_lights[id]["lock"] = None
             managed_lights[id]["latch"] = False
         
         current_states[id] = (att.get(ATTR_BRIGHTNESS, None),
@@ -412,10 +410,19 @@ def zha_group_map():
 context = Context()
 
 @pyscript_compile
+def has_transition(data):
+    return data.get(ATTR_TRANSITION, 0) > 0
+
+@pyscript_compile
+def needs_split(data):
+    return has_transition(data) \
+        and ATTR_BRIGHTNESS in data \
+        and ATTR_COLOR_TEMP_KELVIN in data
+
+@pyscript_compile
 async def intercept(call, data):
     global context
     # skip our own calls
-    _LOGGER.warning(f"intercept: {call} {data}")
     if call.context == context: return
     if call.service == SERVICE_TURN_ON:
         await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID)))
@@ -474,12 +481,10 @@ async def intercept_on(data, expanded_entities):
         # TODO could zigtimise here
         for entity in expanded_entities:
             if entity in managed_lights:
-                if not(managed_lights[entity]["lock"]):
-                    managed_lights[entity]["latch"] = True
+                _LOGGER.warning(f"LATCH ON {entity}")
+                managed_lights[entity]["latch"] = True
 
-        if ATTR_TRANSITION in params and \
-           ATTR_BRIGHTNESS in params and \
-           ATTR_COLOR_TEMP_KELVIN in params:
+        if needs_split(params):
             # we are running within the interceptor, so whatever
             # we leave alone will happen first; that will be transition brightness
             temp = params[ATTR_COLOR_TEMP_KELVIN]
@@ -527,11 +532,7 @@ async def intercept_on(data, expanded_entities):
             if type(action) is tuple:
                 params[ATTR_BRIGHTNESS] = action[0]
                 params[ATTR_COLOR_TEMP_KELVIN] = action[1]
-            if ATTR_TRANSITION in params and \
-               ATTR_BRIGHTNESS in params and \
-               ATTR_COLOR_TEMP_KELVIN in params:
-                # we are running within the interceptor, so whatever
-                # we leave alone will happen first; that will be transition brightness
+            if needs_split(params):
                 temp = params[ATTR_COLOR_TEMP_KELVIN]
                 params[ATTR_TRANSITION] = params[ATTR_TRANSITION] / 2
                 del params[ATTR_COLOR_TEMP_KELVIN]
@@ -560,9 +561,7 @@ def turn_on(data, delay = 0):
 async def _turn_on(data, delay = 0):
     if delay:
         await asyncio.sleep(delay)
-    if ATTR_TRANSITION in data and \
-       ATTR_BRIGHTNESS in data and \
-       ATTR_COLOR_TEMP_KELVIN in data:
+    if needs_split(data):
         temp = data[ATTR_COLOR_TEMP_KELVIN]
         del data[ATTR_COLOR_TEMP_KELVIN]
         await hass.services.async_call(
@@ -585,7 +584,6 @@ def latch_off(entities):
     for e in entities:
         if managed_lights.get(e, {}).get("latch", False):
             managed_lights[e]["latch"] = False
-            managed_lights[e]["lock"] = None
 
 interceptors = []
 
