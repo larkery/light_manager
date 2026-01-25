@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 from .interceptor import setup_service_call_interceptor
 
-from homeassistant.helpers.target import async_extract_referenced_entity_ids, TargetSelection
+from homeassistant.helpers.target import async_extract_referenced_entity_ids, TargetSelectorData
 
 import homeassistant.util.dt as dt_util
 from homeassistant.helpers.sun import get_astral_location
@@ -426,7 +426,7 @@ def needs_split(data):
 async def expand_target(data):
     selected = async_extract_referenced_entity_ids(
         hass,
-        TargetSelection(data)
+        TargetSelectorData(data)
     )
 
     data.pop('area_id', None)
