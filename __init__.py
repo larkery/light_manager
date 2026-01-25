@@ -567,7 +567,7 @@ async def _turn_on(data, delay = 0):
         await hass.services.async_call(
             "light", SERVICE_TURN_ON, data, context = context
         )
-        asyncio.sleep(data[ATTR_TRANSITION]+0.1)
+        await asyncio.sleep(data[ATTR_TRANSITION]+0.1)
         del data[ATTR_BRIGHTNESS]
         data[ATTR_COLOR_TEMP_KELVIN] = temp
         await hass.services.async_call(
