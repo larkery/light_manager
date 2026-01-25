@@ -233,7 +233,7 @@ fields:
                                  if v["lightset"] == lightset]:
         managed_lights.pop(light, None)
 
-@time_trigger("cron(* * * * *)")
+@time_trigger("cron(*/2 * * * *)")
 @service("light.update_managed")
 def update(now = None, force = False, transition = 0):
     global lightsets, managed_lights, context
