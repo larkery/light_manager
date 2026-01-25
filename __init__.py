@@ -591,6 +591,7 @@ async def _turn_on(data, delay = 0):
     if delay:
         await asyncio.sleep(delay)
     if needs_split(data):
+        _LOGGER.warning("Split turn on {data}")
         temp = data[ATTR_COLOR_TEMP_KELVIN]
         del data[ATTR_COLOR_TEMP_KELVIN]
         await hass.services.async_call(
@@ -603,6 +604,7 @@ async def _turn_on(data, delay = 0):
             "light", SERVICE_TURN_ON, data, context = context
         )
     else:
+        _LOGGER.warning("Plain turn on {data}")
         await hass.services.async_call(
             "light", SERVICE_TURN_ON, data, context = context
         )
