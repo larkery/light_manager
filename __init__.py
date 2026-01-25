@@ -11,6 +11,8 @@ _LOGGER = logging.getLogger(__name__)
 
 from .interceptor import setup_service_call_interceptor
 
+from homeassistant.helpers.target import async_extract_referenced_entity_ids, TargetSelectorData
+
 import homeassistant.util.dt as dt_util
 from homeassistant.helpers.sun import get_astral_location
 from homeassistant.components.light import (
@@ -421,11 +423,25 @@ def needs_split(data):
         and ATTR_COLOR_TEMP_KELVIN in data
 
 @pyscript_compile
+async def expand_target(data):
+    selected = await async_extract_referenced_entity_ids(hass, TargetSelectorData(data))
+
+    data.pop('area_id')
+    data.pop('device_ids')
+    data.pop('floor_ids')
+    data.pop('label_ids')
+
+    data[ATTR_ENTITY_ID] = selected.referenced | selected.indirectly_referenced
+
+@pyscript_compile
 async def intercept(call, data):
     global context
     # skip our own calls
     if call.context == context: return
     _LOGGER.warning(f"INTERCEPT: {call.service} {call.context} {data.get(ATTR_ENTITY_ID)} {data['params']}")
+
+    await expand_target(data)
+    
     if call.service == SERVICE_TURN_ON:
         await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID, [])))
     elif call.service == SERVICE_TURN_OFF:
