@@ -424,7 +424,10 @@ def needs_split(data):
 
 @pyscript_compile
 async def expand_target(data):
-    selected = await async_extract_referenced_entity_ids(hass, TargetSelectorData(data))
+    selected = async_extract_referenced_entity_ids(
+        hass,
+        TargetSelectorData(data)
+    )
 
     data.pop('area_id')
     data.pop('device_ids')
@@ -471,9 +474,8 @@ async def intercept(call, data):
         data[ATTR_ENTITY_ID] = offs
         latch_off(offs)
         if len(ons):
-            # we will maybe intercept this again and insert any needed
-            # brightness parameters? not really sure this will work
-            # properly anyway
+            # hopefully we will intercept this again in a minute
+            # and add in the desired brightness
             await hass.services.async_call(
                 "light", SERVICE_TURN_ON, {ATTR_ENTITY_ID: ons}
             )
