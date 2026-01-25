@@ -434,7 +434,7 @@ async def expand_target(data):
     data.pop('floor_ids', None)
     data.pop('label_ids', None)
 
-    data[ATTR_ENTITY_ID] = list(filter(lambda x : x.startwith('light.'),
+    data[ATTR_ENTITY_ID] = list(filter(lambda x : x.startswith('light.'),
                                        selected.referenced | selected.indirectly_referenced))
 
 @pyscript_compile
