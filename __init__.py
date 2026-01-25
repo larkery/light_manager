@@ -429,10 +429,10 @@ async def expand_target(data):
         TargetSelectorData(data)
     )
 
-    data.pop('area_id')
-    data.pop('device_ids')
-    data.pop('floor_ids')
-    data.pop('label_ids')
+    data.pop('area_id', None)
+    data.pop('device_ids', None)
+    data.pop('floor_ids', None)
+    data.pop('label_ids', None)
 
     data[ATTR_ENTITY_ID] = selected.referenced | selected.indirectly_referenced
 
