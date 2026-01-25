@@ -442,14 +442,21 @@ async def intercept(call, data):
     global context
     # skip our own calls
     if call.context == context: return
-    _LOGGER.warning(f"INTERCEPT: {call.service} {call.context} {data.get(ATTR_ENTITY_ID)} {data['params']}")
-
+    
     await expand_target(data)
     
     if call.service == SERVICE_TURN_ON:
         await intercept_on(data, zha_expand(data.get(ATTR_ENTITY_ID, [])))
     elif call.service == SERVICE_TURN_OFF:
         latch_off(zha_expand(data.get(ATTR_ENTITY_ID)))
+
+        ## optimise turn off messages
+        target_state = {id: False for id in data.get(ATTR_ENTITY_ID)}
+        current_state = {entity.entity_id: entity.state == STATE_ON
+                         for entity in hass.states.all()
+                         if entity.entity_id.startswith('light.')}
+        actions = reconcile(current_state, target_state)
+        data[ATTR_ENTITY_ID] = list(actions.keys())
     elif call.service == SERVICE_TOGGLE:
         entities = data.get(ATTR_ENTITY_ID)
         offs,ons = [],[]
