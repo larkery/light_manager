@@ -244,7 +244,7 @@ def update(now = None, force = False, transition = 0):
         times[0] = now
         times = tuple(times)
     set_states = {name:(curve(times, parameters["brightness"]),
-                        curve(times, parameters["temperature"]))
+                        20*round(curve(times, parameters["temperature"]) / 20))
                   for (name, parameters) in lightsets.items()}
 
     changed = False
