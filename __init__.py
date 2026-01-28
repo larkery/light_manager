@@ -108,7 +108,7 @@ fields:
         if light in managed_lights:
             managed_lights[light]["lock"] = None
             managed_lights[light]["latch"] = False
-    update(force = True)
+    update(force = True, transition = 2)
 
 @service("light.manage")
 def manage(lightset=None,
@@ -254,7 +254,7 @@ def update(now = None, force = False, transition = 0):
             changed = True
 
     if not(changed or force):
-        log.warning("No change to the expected states - early exit")
+        log.debug("No change to the expected states - early exit")
         return
     
     current_states = {}
@@ -272,23 +272,25 @@ def update(now = None, force = False, transition = 0):
     # is in lock, or whatever the lightset says, or OFF
     # if the light is off. Next we want to reconcile these
     # and then issue the minimal set of zigbee commands
-    target_states = {name:(managed_lights[name]["lock"] or
-                           set_states[managed_lights[name]["lightset"]])
-                     for name in managed_lights
-                     if (current_states[name][0] ## is on
-                         and (managed_lights[name]["lock"] or # is locked
-                              not(managed_lights[name]["latch"]))) # is not latched to whatever values
-                     }
+    target_states = {}
+    for name, state in managed_lights.items():
+        if state["latch"] or not(current_states.get(name, (None, None))[0]):
+            continue # we don't interfere while latched, or turn on what's off
+        elif state["lock"]:
+            target_states[name] = state["lock"] # we respect the lock state
+        else:
+            target_states[name] = set_states[state["lightset"]] # or the set state
 
     actions = reconcile(current_states, target_states)
 
-    log.warning(f"AIM FOR {target_states} execute {actions}")
+    log.debug(f"AIM FOR {target_states} execute {actions}")
 
     for (entity, (brightness, temperature)) in actions.items():
         # can I use context here??
         if brightness:
             turn_on({
                 ATTR_ENTITY_ID: entity,
+                ATTR_COLOR_TEMP_KELVIN: temperature,
                 ATTR_BRIGHTNESS: brightness,
                 ATTR_TRANSITION: transition
             })
@@ -510,7 +512,7 @@ async def intercept_on(data, expanded_entities):
         # TODO could zigtimise here
         for entity in expanded_entities:
             if entity in managed_lights:
-                _LOGGER.warning(f"LATCH ON {entity}")
+                _LOGGER.debug(f"LATCH ON {entity}")
                 managed_lights[entity]["latch"] = True
 
         if needs_split(params):
@@ -591,7 +593,7 @@ async def _turn_on(data, delay = 0):
     if delay:
         await asyncio.sleep(delay)
     if needs_split(data):
-        _LOGGER.warning("Split turn on {data}")
+        _LOGGER.debug(f"Split turn on {data}")
         temp = data[ATTR_COLOR_TEMP_KELVIN]
         del data[ATTR_COLOR_TEMP_KELVIN]
         await hass.services.async_call(
@@ -604,7 +606,7 @@ async def _turn_on(data, delay = 0):
             "light", SERVICE_TURN_ON, data, context = context
         )
     else:
-        _LOGGER.warning("Plain turn on {data}")
+        _LOGGER.debug(f"Plain turn on {data}")
         await hass.services.async_call(
             "light", SERVICE_TURN_ON, data, context = context
         )
@@ -626,6 +628,7 @@ def init():
         setup_service_call_interceptor( hass, 'light', SERVICE_TURN_OFF, intercept ),
         setup_service_call_interceptor( hass, 'light', SERVICE_TOGGLE, intercept )
     ])
+    event.fire('light_manager_ready')
 
 @time_trigger('shutdown')
 def cleanup():
